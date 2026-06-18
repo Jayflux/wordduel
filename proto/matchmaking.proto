@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package matchmaking;
+
+service MatchmakingService {
+  rpc JoinQueue (MatchRequest) returns (MatchResponse);
+}
+
+message MatchRequest {
+  string userId = 1;
+}
+
+message MatchResponse {
+  string matchId = 1;
+  string opponentId = 2;
+  string opponentUsername = 3;
+  int32 opponentElo = 4;
+}

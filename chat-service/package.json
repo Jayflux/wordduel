@@ -1,0 +1,16 @@
+{
+  "name": "chat-service",
+  "version": "1.0.0",
+  "description": "Chat and Real-time Gameplay Service for Word Duel using WebSockets",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.19.2",
+    "jsonwebtoken": "^9.0.2",
+    "socket.io": "^4.7.5",
+    "wordduel-monorepo": "file:.."
+  }
+}

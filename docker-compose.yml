@@ -1,0 +1,172 @@
+services:
+  # ─── DATABASES ───────────────────────────────────────────────
+  postgres-master:
+    image: postgres:15-alpine
+    container_name: postgres-master
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_PASSWORD=postgres_password
+      - POSTGRES_DB=wordduel
+    volumes:
+      - ./init-master.sh:/docker-entrypoint-initdb.d/init-master.sh
+      - postgres_master_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  postgres-slave:
+    image: postgres:15-alpine
+    container_name: postgres-slave
+    ports:
+      - "5433:5432"
+    depends_on:
+      postgres-master:
+        condition: service_healthy
+    environment:
+      - PGPASSWORD=repl_password
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        until pg_isready -h postgres-master -p 5432 -U postgres; do
+          echo "Waiting for master..."; sleep 2;
+        done;
+        if [ ! -s /var/lib/postgresql/data/PG_VERSION ]; then
+          rm -rf /var/lib/postgresql/data/*;
+          pg_basebackup -h postgres-master -D /var/lib/postgresql/data -U repl_user -v -P -X stream -Fp -R;
+        fi;
+        exec docker-entrypoint.sh postgres
+    volumes:
+      - postgres_slave_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    container_name: redis-cache
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # ─── MICROSERVICES ───────────────────────────────────────────
+  user-service:
+    build:
+      context: .
+      dockerfile: user-service/Dockerfile
+    container_name: user-service
+    ports:
+      - "4002:4002"
+      - "50061:50061"
+    environment:
+      - REST_PORT=4002
+      - GRPC_PORT=50061
+      - DATABASE_MASTER_URL=postgresql://postgres:postgres_password@postgres-master:5432/wordduel
+      - DATABASE_SLAVE_URL=postgresql://postgres:postgres_password@postgres-slave:5432/wordduel
+      - RANKING_SERVICE_URL=http://ranking-service:4003
+      - JWT_SECRET=supersecretkey_wordduel
+    depends_on:
+      postgres-master:
+        condition: service_healthy
+
+  login-service-1:
+    build:
+      context: .
+      dockerfile: login-service/Dockerfile
+    container_name: login-service-1
+    ports:
+      - "4001:4001"
+    environment:
+      - PORT=4001
+      - USER_SERVICE_URL=http://user-service:4002
+      - JWT_SECRET=supersecretkey_wordduel
+    depends_on:
+      - user-service
+
+  login-service-2:
+    build:
+      context: .
+      dockerfile: login-service/Dockerfile
+    container_name: login-service-2
+    ports:
+      - "4111:4001"
+    environment:
+      - PORT=4001
+      - USER_SERVICE_URL=http://user-service:4002
+      - JWT_SECRET=supersecretkey_wordduel
+    depends_on:
+      - user-service
+
+  matchmaking-service:
+    build:
+      context: .
+      dockerfile: matchmaking-service/Dockerfile
+    container_name: matchmaking-service
+    ports:
+      - "50062:50062"   # gRPC
+      - "4005:4005"     # REST (exposed so nginx can proxy /api/matchmaking/)
+    environment:
+      - PORT=50062
+      - REST_PORT=4005
+      - USER_SERVICE_ADDR=user-service:50061
+      - JWT_SECRET=supersecretkey_wordduel
+    depends_on:
+      - user-service
+
+  ranking-service:
+    build:
+      context: .
+      dockerfile: ranking-service/Dockerfile
+    container_name: ranking-service
+    ports:
+      - "4003:4003"
+    environment:
+      - PORT=4003
+      - REDIS_URL=redis://redis-cache:6379
+      - JWT_SECRET=supersecretkey_wordduel
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  chat-service:
+    build:
+      context: .
+      dockerfile: chat-service/Dockerfile
+    container_name: chat-service
+    ports:
+      - "4004:4004"
+    environment:
+      - PORT=4004
+      - USER_SERVICE_URL=http://user-service:4002
+      - JWT_SECRET=supersecretkey_wordduel
+    depends_on:
+      - user-service
+
+  # ─── NGINX API GATEWAY + STATIC FILE SERVER ──────────────────
+  nginx:
+    image: nginx:alpine
+    container_name: nginx-gateway
+    ports:
+      - "8081:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./frontend:/usr/share/nginx/html:ro
+    depends_on:
+      - login-service-1
+      - login-service-2
+      - user-service
+      - matchmaking-service
+      - ranking-service
+      - chat-service
+    restart: unless-stopped
+
+volumes:
+  postgres_master_data:
+  postgres_slave_data:
+  redis_data:

@@ -1,0 +1,15 @@
+{
+  "name": "wordduel-monorepo",
+  "version": "1.0.0",
+  "description": "Root package for running Word Duel services",
+  "scripts": {
+    "install-all": "npm install && npm install --prefix login-service && npm install --prefix user-service && npm install --prefix matchmaking-service && npm install --prefix ranking-service && npm install --prefix chat-service",
+    "start": "node start_all.js",
+    "test-flow": "node test_integration.js"
+  },
+  "dependencies": {
+    "@grpc/grpc-js": "^1.10.8",
+    "@grpc/proto-loader": "^0.7.13",
+    "socket.io-client": "^4.7.5"
+  }
+}

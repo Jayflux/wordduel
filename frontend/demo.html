@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Word Duel — Demo Mode (No Backend)</title>
+    <meta name="description" content="Demo UI Word Duel Multiplayer Wordle — Sistem Terdistribusi.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <!-- Aurora background -->
+    <div class="bg-aurora" aria-hidden="true">
+        <div class="aurora-orb"></div>
+        <div class="aurora-orb"></div>
+        <div class="aurora-orb"></div>
+    </div>
+
+    <!-- ═══ SCREEN 1: LOGIN ═══ -->
+    <section id="login-screen" class="screen active">
+        <div class="auth-wrapper">
+            <div class="auth-logo">
+                <div class="logo-mark">
+                    <span class="logo-text">WORD<span class="accent">DUEL</span></span>
+                </div>
+                <div class="logo-badge">Multiplayer Wordle Battle</div>
+                <p class="auth-subtitle">Sistem Terdistribusi · Microservices · Real-Time</p>
+            </div>
+
+            <div class="auth-card glass glass--elevated">
+                <div class="auth-tabs" role="tablist">
+                    <button id="tab-login" class="tab-btn active" role="tab">Masuk</button>
+                    <button id="tab-register" class="tab-btn" role="tab">Daftar</button>
+                </div>
+
+                <form id="auth-form" autocomplete="on">
+                    <div class="field-group">
+                        <label class="field-label" for="username">Nama Pengguna</label>
+                        <input class="field-input" type="text" id="username" placeholder="Contoh: player123" required autofocus>
+                    </div>
+                    <div class="field-group">
+                        <label class="field-label" for="password">Kata Sandi</label>
+                        <input class="field-input" type="password" id="password" placeholder="••••••••" required>
+                    </div>
+                    <button type="submit" id="auth-submit-btn" class="btn btn-primary btn-xl auth-btn">
+                        Masuk ke Game
+                    </button>
+                </form>
+
+                <div id="auth-error" class="error-toast hidden"></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ═══ SCREEN 2: LOBBY ═══ -->
+    <section id="lobby-screen" class="screen">
+        <header class="lobby-nav glass" style="padding:14px 28px;border-radius:0;border-top:0;border-left:0;border-right:0;position:sticky;top:0;z-index:10;">
+            <div class="logo-compact">WORD<span class="accent">DUEL</span></div>
+            <div class="nav-actions">
+                <span class="timer-pill" style="background:rgba(16,185,129,0.1);border-color:rgba(16,185,129,0.3);color:#6ee7b7;">● ONLINE</span>
+                <button id="logout-btn" class="btn btn-ghost btn-sm">Keluar</button>
+            </div>
+        </header>
+
+        <div class="lobby-layout" style="padding:24px;flex:1;overflow:auto;">
+
+            <!-- Profile panel -->
+            <div class="profile-panel glass">
+                <div class="avatar-ring">
+                    <div class="avatar-inner" id="lobby-avatar">👑</div>
+                </div>
+                <div style="text-align:center;">
+                    <div class="profile-name" id="lobby-username">Player</div>
+                    <div style="font-size:0.8rem;color:var(--text-muted);margin-top:4px;">Pemain Aktif</div>
+                </div>
+                <div class="profile-elo">
+                    <span class="elo-label">Rating ELO</span>
+                    <div class="elo-number" id="lobby-elo">1250</div>
+                    <span class="elo-tier" id="lobby-tier">🥈 Silver</span>
+                </div>
+                <div class="stats-row">
+                    <div class="stat-box">
+                        <span class="stat-val" id="stat-wins">7</span>
+                        <span class="stat-name">Menang</span>
+                    </div>
+                    <div class="stat-box">
+                        <span class="stat-val" id="stat-games">10</span>
+                        <span class="stat-name">Pertandingan</span>
+                    </div>
+                </div>
+                <button id="find-match-btn" class="btn btn-success btn-xl play-btn">
+                    <div class="pulse-ring"></div>
+                    ⚔️ &nbsp;CARI TANDING
+                </button>
+            </div>
+
+            <!-- Leaderboard panel -->
+            <div class="leaderboard-panel glass">
+                <div class="panel-header">
+                    <div class="panel-title">
+                        <span class="icon">🏆</span>
+                        Leaderboard Global
+                    </div>
+                    <div class="panel-badge">Live · Redis Cache</div>
+                </div>
+                <div style="overflow-y:auto;flex:1;">
+                    <table class="lb-table">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Pemain</th>
+                                <th style="text-align:right;">ELO</th>
+                            </tr>
+                        </thead>
+                        <tbody id="leaderboard-body"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ═══ SCREEN 3: ARENA ═══ -->
+    <section id="game-screen" class="screen">
+        <div class="arena-bar glass" style="border-radius:0;border-top:0;border-left:0;border-right:0;">
+            <div class="arena-player">
+                <div class="arena-avatar">🧠</div>
+                <div class="arena-player-info">
+                    <div class="name" id="game-my-name">Anda</div>
+                    <div class="elo" id="game-my-elo">1250 ELO</div>
+                </div>
+            </div>
+            <div class="arena-center">
+                <div class="vs-chip">VS</div>
+                <div class="match-chip" id="match-id-display">DEMO</div>
+            </div>
+            <div class="arena-player opponent">
+                <div class="arena-avatar opp">💀</div>
+                <div class="arena-player-info">
+                    <div class="name" id="game-opp-name">Bot</div>
+                    <div class="elo" id="game-opp-elo" style="color:var(--magenta);">1180 ELO</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="arena-content">
+            <div class="board-column">
+                <div class="board-label"><span class="dot"></span>Papan Anda</div>
+                <div id="my-board" class="wordle-grid" role="grid"></div>
+            </div>
+            <div class="board-column">
+                <div class="board-label opp"><span class="dot"></span>Papan Lawan (Live)</div>
+                <div id="opp-board" class="wordle-grid" role="grid"></div>
+            </div>
+            <div class="sidebar-col">
+                <div class="chat-panel glass">
+                    <div class="chat-header"><div class="chat-dot"></div>Live Chat</div>
+                    <div id="chat-messages" class="chat-feed" aria-live="polite"></div>
+                    <form id="chat-form" class="chat-form" autocomplete="off">
+                        <input type="text" id="chat-input" class="chat-input" placeholder="Ketik pesan..." maxlength="80">
+                        <button type="submit" class="btn btn-primary btn-sm">Kirim</button>
+                    </form>
+                </div>
+                <div class="keyboard-panel glass">
+                    <div id="keyboard" class="keyboard" role="group" aria-label="On-screen keyboard"></div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- OVERLAY: Matchmaking -->
+    <div id="matchmaking-overlay" class="overlay">
+        <div class="overlay-card glass glass--elevated">
+            <div class="spinner-ring"></div>
+            <div class="mm-title">Mencari Lawan...</div>
+            <div class="mm-sub">Menghubungkan via gRPC Matchmaking Service</div>
+            <div class="mm-dots"><span></span><span></span><span></span></div>
+            <button id="cancel-matchmaking-btn" class="btn btn-ghost">Batalkan Antrean</button>
+        </div>
+    </div>
+
+    <!-- OVERLAY: Game Over -->
+    <div id="game-over-overlay" class="overlay">
+        <div class="overlay-card glass glass--elevated">
+            <div id="game-over-icon" class="go-icon">🏆</div>
+            <h2 id="game-over-title" class="go-title">Kemenangan!</h2>
+            <p id="game-over-desc" class="go-desc">Selamat! Anda menebak kata rahasia!</p>
+            <div class="elo-result-card">
+                <div>
+                    <div class="elo-result-label" id="go-my-username">Anda</div>
+                    <div style="font-size:0.75rem;color:var(--text-muted);">Perubahan Rating</div>
+                </div>
+                <div id="go-my-elo-change" class="elo-result-value elo-up">+25 ELO</div>
+            </div>
+            <div style="display:flex;gap:10px;width:100%;">
+                <button id="return-lobby-btn" class="btn btn-primary" style="flex:1;">Kembali ke Lobby</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    // ============================================================
+    // DEMO MODE — No backend required
+    // ============================================================
+
+    const WORDS = ['BESAR','BUKAN','CEPAT','DALAM','ENAK','FAKTA','GELAP','HEBAT',
+                   'IDEAL','JALAN','KECIL','LEBAR','MAKAN','NYATA','OBYEK','PEDAS',
+                   'PUTIH','RAJIN','SALAH','TEBAL','UJUNG','VIRAL','WAJAH'];
+    const SECRET = WORDS[Math.floor(Math.random() * WORDS.length)];
+
+    const DEMO_LEADERBOARD = [
+        { username: 'ProPlayer99',  elo: 2100 },
+        { username: 'WordMaster',   elo: 1980 },
+        { username: 'GuessKing',    elo: 1850 },
+        { username: 'Lexicon',      elo: 1720 },
+        { username: 'AlphaBot',     elo: 1630 },
+        { username: 'VerbViper',    elo: 1520 },
+        { username: 'LetterLord',   elo: 1410 },
+        { username: 'NoviceX',      elo: 1300 },
+        { username: 'BeginnerAce',  elo: 1150 },
+        { username: 'NewPlayer',    elo: 1000 },
+    ];
+
+    const MAX_GUESSES  = 6;
+    const WORD_LENGTH  = 5;
+    let currentRow     = 0;
+    let currentTile    = 0;
+    let gameActive     = false;
+    let oppRow         = 0;
+    let playerName     = '';
+    let playerElo      = 1250;
+    let botInterval    = null;
+
+    // DOM
+    const loginScreen   = document.getElementById('login-screen');
+    const lobbyScreen   = document.getElementById('lobby-screen');
+    const gameScreen    = document.getElementById('game-screen');
+    const authForm      = document.getElementById('auth-form');
+    const authError     = document.getElementById('auth-error');
+    const authSubmitBtn = document.getElementById('auth-submit-btn');
+    const tabLogin      = document.getElementById('tab-login');
+    const tabRegister   = document.getElementById('tab-register');
+    let isReg = false;
+
+    tabLogin.addEventListener('click', ()=>{ isReg=false; tabLogin.classList.add('active'); tabRegister.classList.remove('active'); authSubmitBtn.textContent='Masuk ke Game'; });
+    tabRegister.addEventListener('click', ()=>{ isReg=true; tabRegister.classList.add('active'); tabLogin.classList.remove('active'); authSubmitBtn.textContent='Daftar Akun Baru'; });
+
+    authForm.addEventListener('submit', (e)=>{
+        e.preventDefault();
+        const u = document.getElementById('username').value.trim();
+        const p = document.getElementById('password').value;
+        if (!u || !p) { authError.textContent='Username/password tidak boleh kosong.'; authError.classList.remove('hidden'); return; }
+        if (isReg) { showToast('✅ Demo: Akun berhasil dibuat!','success'); tabLogin.click(); return; }
+        playerName = u;
+        enterLobby();
+    });
+
+    document.getElementById('logout-btn').addEventListener('click',()=>{ showScreen(loginScreen); });
+
+    function showScreen(s){ document.querySelectorAll('.screen').forEach(x=>x.classList.remove('active')); s.classList.add('active'); }
+
+    function enterLobby(){
+        showScreen(lobbyScreen);
+        document.getElementById('lobby-username').textContent = playerName;
+        document.getElementById('lobby-elo').textContent     = playerElo;
+        document.getElementById('lobby-tier').textContent    = getEloTier(playerElo);
+        buildLeaderboard();
+    }
+
+    function getEloTier(elo){
+        if(elo>=2000) return '🏆 Grand Master';
+        if(elo>=1600) return '💎 Diamond';
+        if(elo>=1400) return '🥇 Gold';
+        if(elo>=1200) return '🥈 Silver';
+        if(elo>=1000) return '🔰 Beginner';
+        return '🥉 Bronze';
+    }
+
+    function buildLeaderboard(){
+        const tbody = document.getElementById('leaderboard-body');
+        tbody.innerHTML = '';
+        DEMO_LEADERBOARD.forEach((p,i)=>{
+            const r = i+1;
+            const cls = r<=3 ? `rank-${r}` : 'rank-other';
+            const ini = p.username.charAt(0).toUpperCase();
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td><span class="rank-badge ${cls}">${r}</span></td>
+                <td><div class="lb-player"><div class="lb-avatar">${ini}</div>${p.username}</div></td>
+                <td style="text-align:right;" class="lb-elo">${p.elo}</td>`;
+            tbody.appendChild(tr);
+        });
+    }
+
+    // Matchmaking
+    document.getElementById('find-match-btn').addEventListener('click',()=>{
+        document.getElementById('matchmaking-overlay').classList.add('active');
+        setTimeout(()=>{ document.getElementById('matchmaking-overlay').classList.remove('active'); startGame(); }, 2500);
+    });
+    document.getElementById('cancel-matchmaking-btn').addEventListener('click',()=>{
+        document.getElementById('matchmaking-overlay').classList.remove('active');
+    });
+
+    function startGame(){
+        showScreen(gameScreen);
+        document.getElementById('game-my-name').textContent  = playerName;
+        document.getElementById('game-my-elo').textContent   = `${playerElo} ELO`;
+        document.getElementById('game-opp-name').textContent = 'DemoBot';
+        document.getElementById('game-opp-elo').textContent  = '1180 ELO';
+        document.getElementById('match-id-display').textContent = 'DEMO-' + Math.random().toString(36).substr(2,6).toUpperCase();
+        currentRow=0; currentTile=0; gameActive=true; oppRow=0;
+        buildBoards(); buildKeyboard();
+        const chat = document.getElementById('chat-messages');
+        chat.innerHTML = `<div class="sys-msg">⚔️ Demo dimulai! Kata rahasia: ${WORD_LENGTH} huruf. (Petunjuk tersembunyi)</div>`;
+        appendChat('DemoBot','Siap berduel! Selamat menebak 😈', true);
+        startBotBehavior();
+    }
+
+    function buildBoards(){
+        const mb = document.getElementById('my-board');
+        const ob = document.getElementById('opp-board');
+        mb.innerHTML = ob.innerHTML = '';
+        for(let r=0;r<MAX_GUESSES;r++){
+            const mr = document.createElement('div'); mr.className='wordle-row'; mr.id=`my-row-${r}`;
+            const or = document.createElement('div'); or.className='wordle-row'; or.id=`opp-row-${r}`;
+            for(let c=0;c<WORD_LENGTH;c++){
+                const mt=document.createElement('div'); mt.className='tile'; mt.id=`my-tile-${r}-${c}`; mr.appendChild(mt);
+                const ot=document.createElement('div'); ot.className='opp-tile'; ot.id=`opp-tile-${r}-${c}`; or.appendChild(ot);
+            }
+            mb.appendChild(mr); ob.appendChild(or);
+        }
+    }
+
+    function buildKeyboard(){
+        const layout=[['Q','W','E','R','T','Y','U','I','O','P'],['A','S','D','F','G','H','J','K','L'],['ENTER','Z','X','C','V','B','N','M','⌫']];
+        const kb=document.getElementById('keyboard'); kb.innerHTML='';
+        layout.forEach(row=>{
+            const div=document.createElement('div'); div.className='keyboard-row';
+            row.forEach(k=>{
+                const b=document.createElement('button'); b.textContent=k; b.type='button';
+                b.className=`key${(k==='ENTER'||k==='⌫')?' wide':''}`;
+                b.id=`key-${k.toLowerCase()}`; b.setAttribute('aria-label',k);
+                b.addEventListener('click',()=>handleKey(k==='⌫'?'DELETE':k));
+                div.appendChild(b);
+            });
+            kb.appendChild(div);
+        });
+    }
+
+    window.addEventListener('keydown',(e)=>{
+        if(!gameActive||!gameScreen.classList.contains('active')||document.getElementById('game-over-overlay').classList.contains('active')) return;
+        if(e.ctrlKey||e.metaKey) return;
+        const k=e.key.toUpperCase();
+        if(k==='ENTER') handleKey('ENTER');
+        else if(k==='BACKSPACE'||k==='DELETE') handleKey('DELETE');
+        else if(/^[A-Z]$/.test(k)) handleKey(k);
+    });
+
+    function getTile(r,c){ return document.getElementById(`my-tile-${r}-${c}`); }
+
+    function handleKey(key){
+        if(!gameActive||currentRow>=MAX_GUESSES) return;
+        if(key==='DELETE'){
+            if(currentTile>0){ currentTile--; const t=getTile(currentRow,currentTile); t.textContent=''; t.classList.remove('filled'); }
+        } else if(key==='ENTER'){
+            if(currentTile===WORD_LENGTH) submitGuess();
+            else { shakeRow(currentRow); showToast('Tebakan harus 5 huruf!','warning'); }
+        } else {
+            if(currentTile<WORD_LENGTH){
+                const t=getTile(currentRow,currentTile); t.textContent=key; t.classList.add('filled','pop');
+                t.addEventListener('animationend',()=>t.classList.remove('pop'),{once:true}); currentTile++;
+            }
+        }
+    }
+
+    function shakeRow(r){ document.querySelectorAll(`#my-row-${r} .tile`).forEach(t=>{ t.classList.add('shake'); t.addEventListener('animationend',()=>t.classList.remove('shake'),{once:true}); }); }
+
+    function submitGuess(){
+        let guess='';
+        for(let c=0;c<WORD_LENGTH;c++) guess+=getTile(currentRow,c).textContent;
+        const fb=calcFeedback(guess,SECRET);
+        renderFeedback(currentRow,'my',guess,fb,true);
+        updateKeyboard(guess,fb);
+        currentRow++; currentTile=0;
+        if(fb.every(f=>f==='G')){ setTimeout(()=>endGame(true),800); }
+        else if(currentRow>=MAX_GUESSES){ setTimeout(()=>endGame(false,true),800); }
+    }
+
+    function calcFeedback(guess,answer){
+        const fb=Array(WORD_LENGTH).fill('X');
+        const used=Array(WORD_LENGTH).fill(false);
+        // Green pass
+        for(let i=0;i<WORD_LENGTH;i++) if(guess[i]===answer[i]){ fb[i]='G'; used[i]=true; }
+        // Yellow pass
+        for(let i=0;i<WORD_LENGTH;i++){
+            if(fb[i]==='G') continue;
+            for(let j=0;j<WORD_LENGTH;j++){
+                if(!used[j]&&fb[j]!=='G'&&guess[i]===answer[j]){ fb[i]='Y'; used[j]=true; break; }
+            }
+        }
+        return fb;
+    }
+
+    function renderFeedback(row,prefix,guess,fb,showLetters){
+        for(let c=0;c<WORD_LENGTH;c++){
+            const tile=document.getElementById(`${prefix}-tile-${row}-${c}`);
+            if(!tile) continue;
+            const cls=fb[c]==='G'?'correct':fb[c]==='Y'?'present':'absent';
+            setTimeout(()=>{
+                tile.classList.add('flip');
+                tile.addEventListener('animationend',()=>{ tile.classList.remove('flip'); tile.classList.add(cls); },{ once:true });
+            }, c*80);
+        }
+    }
+
+    function updateKeyboard(guess,fb){
+        const priority={correct:3,present:2,absent:1};
+        for(let i=0;i<WORD_LENGTH;i++){
+            const k=guess[i].toLowerCase();
+            const el=document.getElementById(`key-${k}`);
+            if(!el) continue;
+            const cls=fb[i]==='G'?'correct':fb[i]==='Y'?'present':'absent';
+            if((priority[cls]||0)>(priority[el.dataset.state]||0)){ el.classList.remove('correct','present','absent'); el.classList.add(cls); el.dataset.state=cls; }
+        }
+    }
+
+    // Bot simulation
+    const BOT_WORDS=['KECIL','BEBAS','TEMAN','PASAR','BUNGA','KERAS','PUTIH','MALAM'];
+    let botWordIdx=0;
+    function startBotBehavior(){
+        if(botInterval) clearInterval(botInterval);
+        botWordIdx=0;
+        let delay=5000;
+        function botGuess(){
+            if(!gameActive||oppRow>=MAX_GUESSES) return;
+            const g=BOT_WORDS[botWordIdx%BOT_WORDS.length]; botWordIdx++;
+            const fb=calcFeedback(g,SECRET);
+            renderFeedback(oppRow,'opp',g,fb,false);
+            oppRow++;
+            if(fb.every(f=>f==='G')){ gameActive=false; setTimeout(()=>endGame(false),800); clearInterval(botInterval); }
+            else { delay=Math.min(delay+2000,18000); botInterval=setTimeout(botGuess,delay); }
+        }
+        botInterval=setTimeout(botGuess,delay);
+    }
+
+    function endGame(won, outOfGuesses=false){
+        gameActive=false;
+        if(botInterval){ clearTimeout(botInterval); botInterval=null; }
+        const overlay=document.getElementById('game-over-overlay');
+        const eloDiff = won ? 25 : -15;
+        playerElo += eloDiff;
+        document.getElementById('game-over-icon').textContent  = won ? '🏆' : (outOfGuesses ? '😔' : '💥');
+        document.getElementById('game-over-title').textContent = won ? 'Kemenangan!' : (outOfGuesses ? 'Kehabisan Tebakan' : 'Kekalahan');
+        document.getElementById('game-over-desc').textContent  = won
+            ? `Kata rahasia: ${SECRET}. Anda menebak dalam ${currentRow} percobaan!`
+            : `Kata rahasianya adalah: ${SECRET}`;
+        document.getElementById('go-my-username').textContent = playerName;
+        const changeEl = document.getElementById('go-my-elo-change');
+        changeEl.textContent = `${eloDiff>0?'+':''}${eloDiff} ELO (${playerElo})`;
+        changeEl.className = `elo-result-value ${eloDiff>=0?'elo-up':'elo-down'}`;
+        overlay.classList.add('active');
+    }
+
+    document.getElementById('return-lobby-btn').addEventListener('click',()=>{
+        document.getElementById('game-over-overlay').classList.remove('active');
+        enterLobby();
+    });
+
+    // Chat
+    document.getElementById('chat-form').addEventListener('submit',(e)=>{
+        e.preventDefault();
+        const inp=document.getElementById('chat-input');
+        const msg=inp.value.trim(); if(!msg) return;
+        appendChat(playerName,msg,false); inp.value='';
+        setTimeout(()=>{ const replies=['Haha 😄','Bagus!','Kita lihat siapa yang menang!','GL HF!','gg','wp!']; appendChat('DemoBot',replies[Math.floor(Math.random()*replies.length)],true); }, 1200);
+    });
+
+    function appendChat(sender,msg,isOpp){
+        const div=document.createElement('div'); div.className='msg-item';
+        const cls=isOpp?'msg-sender opp':'msg-sender';
+        div.innerHTML=`<span class="${cls}">${esc(sender)}:</span><span>${esc(msg)}</span>`;
+        const feed=document.getElementById('chat-messages');
+        feed.appendChild(div); feed.scrollTop=feed.scrollHeight;
+    }
+
+    function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+    function showToast(msg,type='info'){
+        const ex=document.querySelector('.toast-notification'); if(ex) ex.remove();
+        const t=document.createElement('div'); t.className='toast-notification';
+        const c={success:'rgba(16,185,129,0.15)',error:'rgba(244,63,94,0.15)',warning:'rgba(245,158,11,0.15)',info:'rgba(124,58,237,0.15)'}[type]||'rgba(124,58,237,0.15)';
+        const bc={success:'rgba(16,185,129,0.4)',error:'rgba(244,63,94,0.4)',warning:'rgba(245,158,11,0.4)',info:'rgba(124,58,237,0.4)'}[type]||'rgba(124,58,237,0.4)';
+        const tc={success:'#6ee7b7',error:'#fda4af',warning:'#fcd34d',info:'#c4b5fd'}[type]||'#c4b5fd';
+        Object.assign(t.style,{position:'fixed',top:'20px',left:'50%',transform:'translateX(-50%)',background:c,border:`1px solid ${bc}`,color:tc,padding:'12px 24px',borderRadius:'12px',backdropFilter:'blur(12px)',zIndex:'9999',fontWeight:'600',fontSize:'0.875rem',whiteSpace:'nowrap',fontFamily:"'Outfit',sans-serif"});
+        t.textContent=msg; document.body.appendChild(t); setTimeout(()=>t.remove(),3500);
+    }
+    </script>
+</body>
+</html>

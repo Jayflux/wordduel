@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Word Duel — Multiplayer Wordle Battle</title>
+    <meta name="description" content="Tantang teman dalam pertarungan Wordle real-time! Sistem terdistribusi microservices dengan ELO rating dan leaderboard global.">
+
+    <!-- Preconnect to Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <!-- Animated aurora background -->
+    <div class="bg-aurora" aria-hidden="true">
+        <div class="aurora-orb"></div>
+        <div class="aurora-orb"></div>
+        <div class="aurora-orb"></div>
+    </div>
+
+    <!-- ════════════════════════════════════════════════
+         SCREEN 1: LOGIN / REGISTER
+    ════════════════════════════════════════════════ -->
+    <section id="login-screen" class="screen active">
+        <div class="auth-wrapper">
+
+            <!-- Logo -->
+            <div class="auth-logo">
+                <div class="logo-mark">
+                    <span class="logo-text">WORD<span class="accent">DUEL</span></span>
+                </div>
+                <div class="logo-badge">Multiplayer Wordle Battle</div>
+                <p class="auth-subtitle">Sistem Terdistribusi · Microservices · Real-Time</p>
+            </div>
+
+            <!-- Card -->
+            <div class="auth-card glass glass--elevated">
+
+                <!-- Tabs -->
+                <div class="auth-tabs" role="tablist">
+                    <button id="tab-login" class="tab-btn active" role="tab" aria-selected="true" aria-controls="login-form">
+                        Masuk
+                    </button>
+                    <button id="tab-register" class="tab-btn" role="tab" aria-selected="false" aria-controls="register-form">
+                        Daftar
+                    </button>
+                </div>
+
+                <!-- Form -->
+                <form id="auth-form" autocomplete="on">
+
+                    <div class="field-group">
+                        <label class="field-label" for="username">Nama Pengguna</label>
+                        <input
+                            class="field-input"
+                            type="text"
+                            id="username"
+                            name="username"
+                            placeholder="Masukkan username..."
+                            required
+                            autocomplete="username"
+                            autofocus
+                        >
+                    </div>
+
+                    <div class="field-group">
+                        <label class="field-label" for="password">Kata Sandi</label>
+                        <input
+                            class="field-input"
+                            type="password"
+                            id="password"
+                            name="password"
+                            placeholder="Masukkan password..."
+                            required
+                            autocomplete="current-password"
+                        >
+                    </div>
+
+                    <button type="submit" id="auth-submit-btn" class="btn btn-primary btn-xl auth-btn">
+                        Masuk ke Game
+                    </button>
+                </form>
+
+                <!-- Error message -->
+                <div id="auth-error" class="error-toast hidden" role="alert" aria-live="polite"></div>
+
+            </div>
+        </div>
+    </section>
+
+    <!-- ════════════════════════════════════════════════
+         SCREEN 2: LOBBY
+    ════════════════════════════════════════════════ -->
+    <section id="lobby-screen" class="screen">
+
+        <!-- Nav bar -->
+        <header class="lobby-nav glass" style="padding:14px 28px; border-radius:0; border-top:0; border-left:0; border-right:0; position:sticky;top:0;z-index:10;">
+            <div class="logo-compact">WORD<span class="accent">DUEL</span></div>
+            <div class="nav-actions">
+                <span id="nav-status" class="timer-pill" style="background:rgba(16,185,129,0.1);border-color:rgba(16,185,129,0.3);color:#6ee7b7;">
+                    ● ONLINE
+                </span>
+                <button id="logout-btn" class="btn btn-ghost btn-sm">Keluar</button>
+            </div>
+        </header>
+
+        <!-- Main -->
+        <div class="lobby-layout" style="padding:24px; flex:1; overflow:auto;">
+
+            <!-- Left: Profile -->
+            <div class="profile-panel glass">
+
+                <div class="avatar-ring">
+                    <div class="avatar-inner" id="lobby-avatar">👑</div>
+                </div>
+
+                <div style="text-align:center;">
+                    <div class="profile-name" id="lobby-username">— Player —</div>
+                    <div style="font-size:0.8rem;color:var(--text-muted);margin-top:4px;">Pemain Aktif</div>
+                </div>
+
+                <div class="profile-elo">
+                    <span class="elo-label">Rating ELO</span>
+                    <div class="elo-number" id="lobby-elo">1000</div>
+                    <span class="elo-tier" id="lobby-tier">🔰 Beginner</span>
+                </div>
+
+                <div class="stats-row">
+                    <div class="stat-box">
+                        <span class="stat-val" id="stat-wins">0</span>
+                        <span class="stat-name">Menang</span>
+                    </div>
+                    <div class="stat-box">
+                        <span class="stat-val" id="stat-games">0</span>
+                        <span class="stat-name">Pertandingan</span>
+                    </div>
+                </div>
+
+                <button id="find-match-btn" class="btn btn-success btn-xl play-btn">
+                    <div class="pulse-ring"></div>
+                    ⚔️ &nbsp;CARI TANDING
+                </button>
+            </div>
+
+            <!-- Right: Leaderboard -->
+            <div class="leaderboard-panel glass">
+                <div class="panel-header">
+                    <div class="panel-title">
+                        <span class="icon">🏆</span>
+                        Leaderboard Global
+                    </div>
+                    <div class="panel-badge">Live · Redis Cache</div>
+                </div>
+
+                <div style="overflow-y:auto;flex:1;">
+                    <table class="lb-table" aria-label="Leaderboard Pemain Teratas">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Pemain</th>
+                                <th style="text-align:right;">ELO</th>
+                            </tr>
+                        </thead>
+                        <tbody id="leaderboard-body">
+                            <!-- Dynamic rows -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+    </section>
+
+    <!-- ════════════════════════════════════════════════
+         SCREEN 3: GAME ARENA
+    ════════════════════════════════════════════════ -->
+    <section id="game-screen" class="screen">
+
+        <!-- Top bar -->
+        <div class="arena-bar glass" style="border-radius:0;border-top:0;border-left:0;border-right:0;">
+            <!-- My info -->
+            <div class="arena-player">
+                <div class="arena-avatar">🧠</div>
+                <div class="arena-player-info">
+                    <div class="name" id="game-my-name">Anda</div>
+                    <div class="elo" id="game-my-elo">1000 ELO</div>
+                </div>
+            </div>
+
+            <!-- Center -->
+            <div class="arena-center">
+                <div class="vs-chip">VS</div>
+                <div class="match-chip" id="match-id-display">MATCH_ID</div>
+            </div>
+
+            <!-- Opponent info -->
+            <div class="arena-player opponent">
+                <div class="arena-avatar opp">💀</div>
+                <div class="arena-player-info">
+                    <div class="name" id="game-opp-name">Lawan</div>
+                    <div class="elo" id="game-opp-elo" style="color:var(--magenta);">1000 ELO</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Arena content -->
+        <div class="arena-content">
+
+            <!-- My Board -->
+            <div class="board-column">
+                <div class="board-label">
+                    <span class="dot"></span>
+                    Papan Anda
+                </div>
+                <div id="my-board" class="wordle-grid" aria-label="Papan tebakan Anda" role="grid">
+                    <!-- Built by JS -->
+                </div>
+            </div>
+
+            <!-- Opponent Board -->
+            <div class="board-column">
+                <div class="board-label opp">
+                    <span class="dot"></span>
+                    Papan Lawan (Live)
+                </div>
+                <div id="opp-board" class="wordle-grid" aria-label="Papan tebakan lawan" role="grid">
+                    <!-- Built by JS -->
+                </div>
+            </div>
+
+            <!-- Sidebar: Chat + Keyboard -->
+            <div class="sidebar-col">
+
+                <!-- Chat -->
+                <div class="chat-panel glass">
+                    <div class="chat-header">
+                        <div class="chat-dot"></div>
+                        Live Chat
+                    </div>
+                    <div id="chat-messages" class="chat-feed" aria-live="polite" aria-label="Chat messages">
+                        <!-- Messages -->
+                    </div>
+                    <form id="chat-form" class="chat-form" autocomplete="off">
+                        <input
+                            type="text"
+                            id="chat-input"
+                            class="chat-input"
+                            placeholder="Ketik pesan..."
+                            autocomplete="off"
+                            maxlength="80"
+                        >
+                        <button type="submit" class="btn btn-primary btn-sm">Kirim</button>
+                    </form>
+                </div>
+
+                <!-- Keyboard -->
+                <div class="keyboard-panel glass">
+                    <div id="keyboard" class="keyboard" aria-label="On-screen keyboard" role="group">
+                        <!-- Built by JS -->
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </section>
+
+    <!-- ════════════════════════════════════════════════
+         OVERLAY: MATCHMAKING (Rich Live Stats)
+    ════════════════════════════════════════════════ -->
+    <div id="matchmaking-overlay" class="overlay" aria-modal="true" role="dialog" aria-label="Mencari lawan">
+        <div class="overlay-card glass glass--elevated mm-card">
+
+            <!-- Spinner -->
+            <div class="mm-spinner-wrap">
+                <div class="spinner-ring"></div>
+                <div class="mm-elo-ring" id="mm-elo-ring">
+                    <span id="mm-elo-window-label">±100</span>
+                </div>
+            </div>
+
+            <div class="mm-title">Mencari Lawan...</div>
+            <div class="mm-sub" id="mm-sub-text">ELO-based Skill Matching · gRPC</div>
+
+            <!-- ELO window progress bar -->
+            <div class="mm-elo-section">
+                <div class="mm-elo-row">
+                    <span class="mm-elo-your">ELO Anda: <strong id="mm-my-elo">—</strong></span>
+                    <span class="mm-elo-range">Mencari: <strong id="mm-range-text">±100</strong></span>
+                </div>
+                <div class="mm-progress-track">
+                    <div class="mm-progress-fill" id="mm-progress-fill"></div>
+                    <div class="mm-progress-milestones">
+                        <span class="mm-ms" style="left:0%">±100</span>
+                        <span class="mm-ms" style="left:16.7%">±250</span>
+                        <span class="mm-ms" style="left:41.7%">±500</span>
+                        <span class="mm-ms" style="left:75%">∞</span>
+                    </div>
+                </div>
+                <div class="mm-progress-labels">
+                    <span>0s</span><span>10s</span><span>25s</span><span>45s</span><span>60s</span>
+                </div>
+            </div>
+
+            <!-- Live stats row -->
+            <div class="mm-stats-row">
+                <div class="mm-stat-box">
+                    <span class="mm-stat-val" id="mm-wait-time">0:00</span>
+                    <span class="mm-stat-lbl">Waktu Tunggu</span>
+                </div>
+                <div class="mm-stat-box">
+                    <span class="mm-stat-val" id="mm-queue-count">—</span>
+                    <span class="mm-stat-lbl">Di Antrean</span>
+                </div>
+            </div>
+
+            <!-- Phase label -->
+            <div class="mm-phase" id="mm-phase-label">
+                <span class="mm-phase-dot"></span>
+                <span id="mm-phase-text">Fase 1 — Mencari pemain ELO serupa</span>
+            </div>
+
+            <button id="cancel-matchmaking-btn" class="btn btn-ghost">Batalkan Antrean</button>
+        </div>
+    </div>
+
+    <!-- ════════════════════════════════════════════════
+         OVERLAY: GAME OVER
+    ════════════════════════════════════════════════ -->
+    <div id="game-over-overlay" class="overlay" aria-modal="true" role="dialog" aria-label="Pertandingan selesai">
+        <div class="overlay-card glass glass--elevated">
+            <div id="game-over-icon" class="go-icon">🏆</div>
+            <h2 id="game-over-title" class="go-title">Pertandingan Selesai</h2>
+            <p id="game-over-desc" class="go-desc">Menghitung perubahan ELO...</p>
+
+            <div class="elo-result-card">
+                <div>
+                    <div class="elo-result-label" id="go-my-username">Anda</div>
+                    <div style="font-size:0.75rem;color:var(--text-muted);">Perubahan Rating</div>
+                </div>
+                <div id="go-my-elo-change" class="elo-result-value elo-up">+25 ELO</div>
+            </div>
+
+            <div style="display:flex;gap:10px;width:100%;">
+                <button id="return-lobby-btn" class="btn btn-primary" style="flex:1;">Kembali ke Lobby</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Socket.io client (proxied by Nginx) -->
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package user;
+
+service UserService {
+  rpc GetUserElo (UserEloRequest) returns (UserEloResponse);
+}
+
+message UserEloRequest {
+  string userId = 1;
+}
+
+message UserEloResponse {
+  string userId = 1;
+  string username = 2;
+  int32 elo = 3;
+}
