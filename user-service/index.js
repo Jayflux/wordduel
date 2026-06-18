@@ -21,12 +21,16 @@ async function initDb() {
       id VARCHAR(50) PRIMARY KEY,
       username VARCHAR(50) UNIQUE NOT NULL,
       password_hash VARCHAR(255) NOT NULL,
-      elo INT DEFAULT 1000
+      elo INT DEFAULT 1000,
+      wins INT DEFAULT 0,
+      games INT DEFAULT 0
     );
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS wins INT DEFAULT 0;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS games INT DEFAULT 0;
   `;
   try {
     await masterPool.query(createTableQuery);
-    console.log('Database schema initialized on master');
+    console.log('Database schema initialized on master (with wins & games columns)');
   } catch (err) {
     console.error('Error initializing database, retrying in 5s...', err.message);
     setTimeout(initDb, 5000);
@@ -71,7 +75,7 @@ app.get('/users/by-username', async (req, res) => {
   }
 
   try {
-    const query = 'SELECT id, username, password_hash AS "passwordHash", elo FROM users WHERE LOWER(username) = LOWER($1)';
+    const query = 'SELECT id, username, password_hash AS "passwordHash", elo, wins, games FROM users WHERE LOWER(username) = LOWER($1)';
     const result = await slavePool.query(query, [username]);
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'User not found' });
@@ -86,7 +90,7 @@ app.get('/users/by-username', async (req, res) => {
 // REST: Get user profile info (Reads go to Slave Pool)
 app.get('/users/:id', async (req, res) => {
   try {
-    const query = 'SELECT id, username, elo FROM users WHERE id = $1';
+    const query = 'SELECT id, username, elo, wins, games FROM users WHERE id = $1';
     const result = await slavePool.query(query, [req.params.id]);
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'User not found' });
@@ -147,19 +151,19 @@ app.post('/matches/complete', authenticateToken, async (req, res) => {
     originalLoserElo = originalLoserResult.rows[0].elo;
     loserUsername = originalLoserResult.rows[0].username;
 
-    // Step 1: Update Winner ELO (+25)
-    console.log(`[Saga Step 1] Adding ELO +25 to Winner (${winnerUsername})`);
+    // Step 1: Update Winner ELO (+25), Wins (+1), Games (+1)
+    console.log(`[Saga Step 1] Adding ELO +25, Wins +1, Games +1 to Winner (${winnerUsername})`);
     const winnerUpdate = await masterPool.query(
-      'UPDATE users SET elo = elo + 25 WHERE id = $1 RETURNING elo',
+      'UPDATE users SET elo = elo + 25, wins = wins + 1, games = games + 1 WHERE id = $1 RETURNING elo',
       [winnerId]
     );
     newWinnerElo = winnerUpdate.rows[0].elo;
     stepsCompleted.push('step1_update_winner');
 
-    // Step 2: Update Loser ELO (-25)
-    console.log(`[Saga Step 2] Deducting ELO -25 from Loser (${loserUsername})`);
+    // Step 2: Update Loser ELO (-25), Games (+1)
+    console.log(`[Saga Step 2] Deducting ELO -25, adding Games +1 for Loser (${loserUsername})`);
     const loserUpdate = await masterPool.query(
-      'UPDATE users SET elo = elo - 25 WHERE id = $1 RETURNING elo',
+      'UPDATE users SET elo = elo - 25, games = games + 1 WHERE id = $1 RETURNING elo',
       [loserId]
     );
     newLoserElo = loserUpdate.rows[0].elo;
@@ -213,11 +217,11 @@ app.post('/matches/complete', authenticateToken, async (req, res) => {
     for (let i = stepsCompleted.length - 1; i >= 0; i--) {
       const step = stepsCompleted[i];
       if (step === 'step2_update_loser') {
-        console.log(`[Saga Rollback] Reverting Loser ELO back to ${originalLoserElo}`);
-        await masterPool.query('UPDATE users SET elo = $1 WHERE id = $2', [originalLoserElo, loserId]);
+        console.log(`[Saga Rollback] Reverting Loser ELO back to ${originalLoserElo} and decrementing games`);
+        await masterPool.query('UPDATE users SET elo = $1, games = games - 1 WHERE id = $2', [originalLoserElo, loserId]);
       } else if (step === 'step1_update_winner') {
-        console.log(`[Saga Rollback] Reverting Winner ELO back to ${originalWinnerElo}`);
-        await masterPool.query('UPDATE users SET elo = $1 WHERE id = $2', [originalWinnerElo, winnerId]);
+        console.log(`[Saga Rollback] Reverting Winner ELO back to ${originalWinnerElo}, decrementing wins and games`);
+        await masterPool.query('UPDATE users SET elo = $1, wins = wins - 1, games = games - 1 WHERE id = $2', [originalWinnerElo, winnerId]);
       }
     }
 
