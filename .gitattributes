@@ -1,0 +1,8 @@
+# Force LF (Linux) line endings for shell scripts and configuration files
+# to prevent syntax errors when running Docker on Windows.
+*.sh text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.sql text eol=lf
+*.conf text eol=lf
+docker-compose.yml text eol=lf

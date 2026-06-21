@@ -3,6 +3,7 @@ services:
   postgres-master:
     image: postgres:15-alpine
     container_name: postgres-master
+    restart: unless-stopped
     ports:
       - "5432:5432"
     environment:
@@ -20,6 +21,7 @@ services:
   postgres-slave:
     image: postgres:15-alpine
     container_name: postgres-slave
+    restart: unless-stopped
     ports:
       - "5433:5432"
     depends_on:
@@ -45,6 +47,7 @@ services:
   redis:
     image: redis:7-alpine
     container_name: redis-cache
+    restart: unless-stopped
     ports:
       - "6379:6379"
     volumes:
@@ -61,6 +64,7 @@ services:
       context: .
       dockerfile: user-service/Dockerfile
     container_name: user-service
+    restart: unless-stopped
     ports:
       - "4002:4002"
       - "50061:50061"
@@ -74,12 +78,15 @@ services:
     depends_on:
       postgres-master:
         condition: service_healthy
+      postgres-slave:
+        condition: service_started
 
   login-service-1:
     build:
       context: .
       dockerfile: login-service/Dockerfile
     container_name: login-service-1
+    restart: unless-stopped
     ports:
       - "4001:4001"
     environment:
@@ -94,6 +101,7 @@ services:
       context: .
       dockerfile: login-service/Dockerfile
     container_name: login-service-2
+    restart: unless-stopped
     ports:
       - "4111:4001"
     environment:
@@ -108,6 +116,7 @@ services:
       context: .
       dockerfile: matchmaking-service/Dockerfile
     container_name: matchmaking-service
+    restart: unless-stopped
     ports:
       - "50062:50062"   # gRPC
       - "4005:4005"     # REST (exposed so nginx can proxy /api/matchmaking/)
@@ -124,6 +133,7 @@ services:
       context: .
       dockerfile: ranking-service/Dockerfile
     container_name: ranking-service
+    restart: unless-stopped
     ports:
       - "4003:4003"
     environment:
@@ -139,6 +149,7 @@ services:
       context: .
       dockerfile: chat-service/Dockerfile
     container_name: chat-service
+    restart: unless-stopped
     ports:
       - "4004:4004"
     environment:
@@ -152,6 +163,7 @@ services:
   nginx:
     image: nginx:alpine
     container_name: nginx-gateway
+    restart: unless-stopped
     ports:
       - "8081:80"
     volumes:
@@ -164,7 +176,6 @@ services:
       - matchmaking-service
       - ranking-service
       - chat-service
-    restart: unless-stopped
 
 volumes:
   postgres_master_data:
